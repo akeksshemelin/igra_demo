@@ -1,10 +1,11 @@
 #include <SFML/Graphics.hpp>
-//#include <SFML/Audio.hpp>
+#include <SFML/Audio.hpp>
+#include <list>
 
 using namespace sf;
 
 
-float offsetX = 0, offsetY = 0;  //смещение
+float offsetX = 0, offsetY = 0;
 
 
 const int H = 17;
@@ -12,7 +13,7 @@ const int W = 150;
 
 
 String TileMap[H] = {
-"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+"0                                                                                                                                                    0",
 "0                                                                                                                                                    0",
 "0                                                                                    w                                                               0",
 "0                   w                                  w                   w                                                                         0",
@@ -32,101 +33,120 @@ String TileMap[H] = {
 };
 
 
+class Entity 
+{
+	public:
+		float dx, dy;
+		FloatRect rect;
+		Sprite sprite;
+		float currentFrame;
+
+		virtual void update(float time) = 0;
+};
 
 
-class PLAYER {
-
-public:
-
-	float dx, dy;
-	FloatRect rect;
-	bool onGround;
-	Sprite sprite;
-	float currentFrame;
-
-	PLAYER(Texture& image) //загружаем картинку в конструктор
-	{
-		sprite.setTexture(image);
-		rect = FloatRect(100, 180, 16, 16);
-
-		dx = dy = 0.1;
-		currentFrame = 0;
-	}
 
 
-	void update(float time)
-	{
 
-		rect.left += dx * time;   //rect.left
-		Collision(0);
+class PLAYER : public Entity
+{
 
+	public:
 
-		if (!onGround) dy = dy + 0.0005 * time;  //гравитация 
-		rect.top += dy * time;
-		onGround = false;
-		Collision(1);
+		
+		bool onGround;
 
+		PLAYER(Texture& image)
+		{
+			sprite.setTexture(image);
+			rect = FloatRect(100, 180, 16, 16);
 
-		currentFrame += time * 0.005;
-		if (currentFrame > 3) currentFrame -= 3;
-
-
-		if (dx > 0) sprite.setTextureRect(IntRect(112 + 31 * int(currentFrame), 144, 16, 16));   //движение направо
-		if (dx < 0) sprite.setTextureRect(IntRect(112 + 31 * int(currentFrame) + 16, 144, -16, 16));  //движение налево, зеркалим
+			dx = dy = 0.1;
+			currentFrame = 0;
+		}
 
 
-		sprite.setPosition(rect.left - offsetX, rect.top - offsetY);  //выводим спрайт в координты с учетом смещения
+		void update(float time)
+		{
 
-		dx = 0;
-	}
+			rect.left += dx * time;
+			Collision(0);
 
 
-	void Collision(int num)
-	{
+			if (!onGround) dy = dy + 0.0005 * time;
+			rect.top += dy * time;
+			onGround = false;
+			Collision(1);
 
-		for (int i = rect.top / 16; i < (rect.top + rect.height) / 16; i++)
-			for (int j = rect.left / 16; j < (rect.left + rect.width) / 16; j++)
-			{
-				if ((TileMap[i][j] == 'P') || (TileMap[i][j] == 'k') || (TileMap[i][j] == '0') || (TileMap[i][j] == 'r') || (TileMap[i][j] == 't'))
+
+			currentFrame += time * 0.005;
+			if (currentFrame > 3) currentFrame -= 3;
+
+
+			if (dx > 0) sprite.setTextureRect(IntRect(112 + 31 * int(currentFrame), 144, 16, 16));
+			if (dx < 0) sprite.setTextureRect(IntRect(112 + 31 * int(currentFrame) + 16, 144, -16, 16));
+
+
+			sprite.setPosition(rect.left - offsetX, rect.top - offsetY);
+
+			dx = 0;
+		}
+
+
+		void Collision(int num)
+		{
+
+			for (int i = rect.top / 16; i < (rect.top + rect.height) / 16; i++)
+				for (int j = rect.left / 16; j < (rect.left + rect.width) / 16; j++)
 				{
-					if (dy > 0 && num == 1)
+					if ((TileMap[i][j] == 'P') || (TileMap[i][j] == 'k') || (TileMap[i][j] == '0') || (TileMap[i][j] == 'r') || (TileMap[i][j] == 't'))
 					{
-						rect.top = i * 16 - rect.height;  dy = 0;   onGround = true;
+						if (dy > 0 && num == 1)
+						{
+							rect.top = i * 16 - rect.height;  dy = 0;   onGround = true;
+						}
+						if (dy < 0 && num == 1)
+						{
+							rect.top = i * 16 + 16;   dy = 0;
+						}
+						if (dx > 0 && num == 0)
+						{
+							rect.left = j * 16 - rect.width;
+						}
+						if (dx < 0 && num == 0)
+						{
+							rect.left = j * 16 + 16;
+						}
 					}
-					if (dy < 0 && num == 1)
-					{
-						rect.top = i * 16 + 16;   dy = 0;
-					}
-					if (dx > 0 && num == 0)
-					{
-						rect.left = j * 16 - rect.width;
-					}
-					if (dx < 0 && num == 0)
-					{
-						rect.left = j * 16 + 16;
+
+					if (TileMap[i][j] == 'c') {
+						 TileMap[i][j]=' '; 
 					}
 				}
 
-				if (TileMap[i][j] == 'c') {
-					// TileMap[i][j]=' '; 
-				}
-			}
-
-	}
+		}
 
 };
 
 
 
-class ENEMY
+class ENEMY: public Entity
 {
 
 public:
-	float dx, dy;
-	FloatRect rect;
-	Sprite sprite;
-	float currentFrame;
+	
+
 	bool life;
+
+	/*ENEMY(Texture& image, int x, int y)
+	{
+		sprite.setTexture(image);
+		rect = FloatRect(X, 0, 16, 16);
+
+		dx = 0.05;
+		currentFrame = 0;
+		life = true;
+	}*/
 
 
 	void set(Texture& image, int x, int y)
@@ -189,22 +209,21 @@ int main()
 	Texture tileSet;
 	tileSet.loadFromFile("Mario_Tileset.png");
 
+	
+	PLAYER Mario(tileSet);
+	ENEMY  enemy2;
+	ENEMY  enemy1;
+	//std::list<Entity*> entities;
+	//std::list <Entity*>::iterator it;
 
-	PLAYER Mario(tileSet);  //создаем игрока
-	ENEMY  enemy;  // создаем врага
-	enemy.set(tileSet, 48 * 16, 13 * 16);
+	//entities.push_back(new ENEMY());
 
+	enemy1.set(tileSet, 48 * 16, 13 * 16);
+	enemy2.set(tileSet, 53 * 16, 13 * 16);
 
 	Sprite tile(tileSet);
 
-	//SoundBuffer buffer;
-	//buffer.loadFromFile("Jump.ogg");
-	//Sound sound(buffer);
-
-	//Music music;
-	//music.openFromFile("Mario_Theme.ogg");
-	//music.play();
-
+	
 	Clock clock;
 
 	while (window.isOpen())
@@ -229,18 +248,27 @@ int main()
 
 		if (Keyboard::isKeyPressed(Keyboard::Right))    Mario.dx = 0.1;
 
-		if (Keyboard::isKeyPressed(Keyboard::Up))	if (Mario.onGround) { Mario.dy = -0.27; Mario.onGround = false;   }
+		if (Keyboard::isKeyPressed(Keyboard::Up))	if (Mario.onGround) { Mario.dy = -0.27; Mario.onGround = false;  }
 
 
 
 		Mario.update(time);
-		enemy.update(time);
+		enemy1.update(time);
+		enemy2.update(time);
 
 
-		if (Mario.rect.intersects(enemy.rect))
+		if (Mario.rect.intersects(enemy1.rect))
 		{
-			if (enemy.life) {
-				if (Mario.dy > 0) { enemy.dx = 0; Mario.dy = -0.2; enemy.life = false; }
+			if (enemy1.life) {
+				if (Mario.dy > 0) { enemy1.dx = 0; Mario.dy = -0.2; enemy1.life = false; }
+				else Mario.sprite.setColor(Color::Red);
+			}
+		}
+
+		if (Mario.rect.intersects(enemy2.rect))
+		{
+			if (enemy2.life) {
+				if (Mario.dy > 0) { enemy2.dx = 0; Mario.dy = -0.2; enemy2.life = false; }
 				else Mario.sprite.setColor(Color::Red);
 			}
 		}
@@ -253,8 +281,8 @@ int main()
 
 		window.clear(Color(107, 140, 255));
 
-		for (int i = 0; i < H; i++)
-			for (int j = 0; j < W; j++)
+		for (int i = 0; i < H; i++)  // по высоте
+			for (int j = 0; j < W; j++)  // по ширине
 			{
 				if (TileMap[i][j] == 'P')  tile.setTextureRect(IntRect(143 - 16 * 3, 112, 16, 16));
 
@@ -276,14 +304,15 @@ int main()
 
 				if ((TileMap[i][j] == ' ') || (TileMap[i][j] == '0')) continue;
 
-				tile.setPosition(j * 16 - offsetX, i * 16 - offsetY);
+				tile.setPosition(j * 16 - offsetX, i * 16 - offsetY);  //выводим в координату со смещением
 				window.draw(tile);
 			}
 
 
 
 		window.draw(Mario.sprite);
-		window.draw(enemy.sprite);
+		window.draw(enemy1.sprite);
+		window.draw(enemy2.sprite);
 
 		window.display();
 	}
